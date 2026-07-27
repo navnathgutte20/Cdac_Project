@@ -1,0 +1,20 @@
+package com.farmafriend.erp.service.impl;
+
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+
+import com.farmafriend.erp.dto.response.ProductResponse;
+import com.farmafriend.erp.repository.ProductRepository;
+import com.farmafriend.erp.service.ProductService;
+@Service
+public class ProductServiceimpl implements ProductService{
+	
+	public final ProductRepository productRepository;
+	@Override
+	public List<ProductResponse> getAllProducts() {
+		
+		return productRepository.findAll();
+	}
+
+}

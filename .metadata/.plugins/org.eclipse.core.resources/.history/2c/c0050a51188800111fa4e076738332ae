@@ -1,0 +1,23 @@
+package com.farmafriend.erp.service;
+
+import com.farmafriend.erp.dto.request.OrderRequest;
+import com.farmafriend.erp.dto.request.PaymentInitiateRequest;
+import com.farmafriend.erp.dto.request.ShipmentCreateRequest;
+import com.farmafriend.erp.dto.response.OrderItemResponse;
+import com.farmafriend.erp.dto.response.OrderResponse;
+import com.farmafriend.erp.dto.response.PageResponse;
+import org.springframework.data.domain.Pageable;
+
+public interface OrderService {
+    OrderResponse placeOrder(Long customerId, OrderRequest request);
+    OrderItemResponse getOrder(Long orderId);
+    PageResponse<OrderItemResponse> getOrdersForCustomer(Long customerId, Pageable pageable);
+    PageResponse<OrderResponse> getAllOrders(Pageable pageable);
+    PageResponse<OrderResponse> getOrdersForDealer(Long dealerId, Pageable pageable);
+    OrderResponse cancelOrder(Long orderId, Long customerId);
+    OrderResponse getInvoice(Long orderId);
+    OrderResponse initiatePayment(PaymentInitiateRequest request);
+    OrderResponse createShipment(ShipmentCreateRequest request);
+    OrderResponse updateShipmentStatus(Long orderId, String status);
+    OrderResponse trackShipment(String trackingNumber);
+}

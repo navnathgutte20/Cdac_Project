@@ -1,0 +1,5 @@
+package com.farmafriend.erp.dto.request;
+
+public class InventoryUpdateRequest {
+
+}

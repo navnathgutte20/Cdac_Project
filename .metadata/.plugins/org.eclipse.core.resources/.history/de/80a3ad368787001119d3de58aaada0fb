@@ -1,0 +1,12 @@
+package com.farmafriend.erp.service;
+
+import org.jspecify.annotations.Nullable;
+
+import com.farmafriend.erp.dto.response.CartResponse;
+
+public interface CartService {
+
+	
+	CartResponse getCart();
+
+}

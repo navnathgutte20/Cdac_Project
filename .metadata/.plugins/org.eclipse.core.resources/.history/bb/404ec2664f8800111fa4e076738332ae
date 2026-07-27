@@ -1,0 +1,10 @@
+package com.farmafriend.erp.service;
+
+import java.util.List;
+
+import com.farmafriend.erp.dto.response.InventoryResponse;
+
+public interface dealerService {
+
+	static List<InventoryResponse> inventoryResponses(Long id);
+}

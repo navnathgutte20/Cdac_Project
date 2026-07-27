@@ -1,0 +1,6 @@
+package com.farmafriend.erp.service;
+
+public interface dealerService {
+
+	static Object getInventoryForDealer(Long id);
+}

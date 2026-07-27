@@ -1,0 +1,15 @@
+package com.farmafriend.erp.dto.response;
+
+import lombok.Data;
+
+@Data
+public class InventoryResponse {
+	private Long inventoryId;
+    private Long dealerId;
+    private String dealerName;
+    private Long productId;
+    private String productName;
+    private Integer stockQuantity;
+    private Integer availableStock;
+    private Integer reservedStock;
+}

@@ -1,0 +1,12 @@
+package com.farmafriend.erp.service;
+
+import com.farmafriend.erp.dto.response.CartResponse;
+
+public interface CartService {
+
+	
+	
+
+	public CartResponse getCart(Long customerId);
+
+}

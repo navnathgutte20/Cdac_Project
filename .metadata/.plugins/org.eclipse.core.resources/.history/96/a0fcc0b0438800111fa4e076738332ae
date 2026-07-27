@@ -1,0 +1,22 @@
+package com.farmafriend.erp.repository;
+
+import com.farmafriend.erp.entity.CartItem;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public interface CartItemRepository extends JpaRepository<CartItem, Long> {
+	@Query("""
+		    SELECT c
+		    FROM CartItem c
+		    JOIN FETCH c.product
+		    WHERE c.customer.userId = :customerId
+		""")
+    List<CartItem> findByCustomer_UserId(Long customerId);
+    Optional<CartItem> findByCustomer_UserIdAndProduct_ProductId(Long customerId, Long productId);
+    void deleteByCustomer_UserId(Long customerId);
+}

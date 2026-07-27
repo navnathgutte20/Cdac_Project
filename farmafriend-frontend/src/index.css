@@ -1,0 +1,62 @@
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background-color: #F3F6F4;
+  color: #16241F;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.page-container {
+  padding: 32px 24px;
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+/* Tabular / data figures — prices, order numbers, tracking codes */
+.mono {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #C6D6CC;
+  border-radius: 999px;
+  border: 2px solid #F3F6F4;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #A9C0B3;
+}
+
+/* Visible keyboard focus */
+:focus-visible {
+  outline: 2px solid #0B6E4F;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

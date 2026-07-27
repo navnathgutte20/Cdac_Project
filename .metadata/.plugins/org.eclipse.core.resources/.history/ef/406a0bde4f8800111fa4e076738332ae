@@ -1,0 +1,5 @@
+package com.farmafriend.erp.repository;
+
+public interface DealerRepository {
+
+}

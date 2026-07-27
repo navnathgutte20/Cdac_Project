@@ -1,0 +1,242 @@
+package com.farmafriend.erp.service.impl;
+
+import com.farmafriend.erp.constants.OrderStatus;
+import com.farmafriend.erp.constants.PaymentStatus;
+import com.farmafriend.erp.constants.ShipmentStatus;
+import com.farmafriend.erp.dto.request.OrderRequest;
+import com.farmafriend.erp.dto.request.PaymentInitiateRequest;
+import com.farmafriend.erp.dto.request.ShipmentCreateRequest;
+import com.farmafriend.erp.dto.response.CartItemResponse;
+import com.farmafriend.erp.dto.response.OrderItemResponse;
+import com.farmafriend.erp.dto.response.OrderResponse;
+import com.farmafriend.erp.dto.response.PageResponse;
+import com.farmafriend.erp.entity.*;
+import com.farmafriend.erp.exception.BadRequestException;
+import com.farmafriend.erp.exception.ResourceNotFoundException;
+import com.farmafriend.erp.repository.*;
+import com.farmafriend.erp.service.OrderService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class OrderServiceImpl implements OrderService {
+
+    private final OrderRepository orderRepository;
+    private final CartItemRepository cartItemRepository;
+    private final UserRepository userRepository;
+    private final DeliveryAddressRepository deliveryAddressRepository;
+
+    @Override
+    @Transactional
+    public OrderResponse placeOrder(Long customerId, OrderRequest request) {
+        User customer = userRepository.findById(customerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Customer not found with id: " + customerId));
+        List<CartItem> cartItems = cartItemRepository.findByCustomer_UserId(customerId);
+        if (cartItems.isEmpty()) {
+            throw new BadRequestException("Cannot place an order with an empty cart");
+        }
+        DeliveryAddress address = deliveryAddressRepository.findById(request.getAddressId())
+                .orElseThrow(() -> new ResourceNotFoundException("Delivery address not found with id: " + request.getAddressId()));
+
+        BigDecimal total = BigDecimal.ZERO;
+        Order order = Order.builder()
+                .customer(customer)
+                .deliveryAddress(address)
+                .status(OrderStatus.CREATED)
+                .totalAmount(BigDecimal.ZERO)
+                .build();
+
+        for (CartItem ci : cartItems) {
+            OrderItem item = OrderItem.builder()
+                    .order(order)
+                    .product(ci.getProduct())
+                    .quantity(ci.getQuantity())
+                    .price(ci.getUnitPrice())
+                    .build();
+            order.getOrderItems().add(item);
+            total = total.add(ci.getUnitPrice().multiply(BigDecimal.valueOf(ci.getQuantity())));
+        }
+        order.setTotalAmount(total);
+        order = orderRepository.save(order);
+
+        cartItemRepository.deleteByCustomer_UserId(customerId);
+
+        return toResponse(order);
+    }
+   
+    @Transactional(readOnly = true)
+    public OrderItemResponse getOrder(Long id) {
+
+        Order order = orderRepository.findByIdWithItems(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+        System.out.println(order);
+        return toOrderItemResponse(order);
+    }
+
+    @Override
+    public PageResponse<OrderResponse> getOrdersForCustomer(Long customerId, Pageable pageable) {
+        Page<Order> page = orderRepository.findByCustomer_UserId(customerId, pageable);
+        return PageResponse.from(page.map(this::toResponse));
+    }
+
+    @Override
+    public PageResponse<OrderResponse> getAllOrders(Pageable pageable) {
+        Page<Order> page = orderRepository.findAll(pageable);
+        return PageResponse.from(page.map(this::toResponse));
+    }
+
+    @Override
+    public PageResponse<OrderResponse> getOrdersForDealer(Long dealerId, Pageable pageable) {
+        Page<Order> page = orderRepository.findByDealer_UserId(dealerId, pageable);
+        return PageResponse.from(page.map(this::toResponse));
+    }
+
+    @Override
+    @Transactional
+    public OrderResponse cancelOrder(Long orderId, Long customerId) {
+        Order order = findOrder(orderId);
+        if (!order.getCustomer().getUserId().equals(customerId)) {
+            throw new BadRequestException("You are not authorized to cancel this order");
+        }
+        if (order.getStatus() == OrderStatus.DELIVERED || order.getStatus() == OrderStatus.SHIPPED) {
+            throw new BadRequestException("Order cannot be cancelled once shipped or delivered");
+        }
+        order.setStatus(OrderStatus.CANCELLED);
+        orderRepository.save(order);
+        return toResponse(order);
+    }
+
+    @Override
+    public OrderResponse getInvoice(Long orderId) {
+        return toResponse(findOrder(orderId));
+    }
+
+    @Override
+    @Transactional
+    public OrderResponse initiatePayment(PaymentInitiateRequest request) {
+        Order order = findOrder(request.getOrderId());
+        if (order.getPaymentStatus() != null) {
+            throw new BadRequestException("Payment already exists for this order");
+        }
+        order.setPaymentMethod(request.getPaymentMethod());
+        order.setPaymentGateway(request.getPaymentGateway());
+        order.setPaymentDate(LocalDateTime.now());
+        order.setTransactionRef("TXN" + System.currentTimeMillis());
+        order.setPaymentStatus(request.getPaymentMethod().name().equals("CASH_ON_DELIVERY")
+                ? PaymentStatus.PENDING
+                : PaymentStatus.SUCCESS);
+        orderRepository.save(order);
+        return toResponse(order);
+    }
+
+    @Override
+    @Transactional
+    public OrderResponse createShipment(ShipmentCreateRequest request) {
+        Order order = findOrder(request.getOrderId());
+        if (order.getTrackingNumber() != null) {
+            throw new BadRequestException("Shipment already exists for this order");
+        }
+        User dealer = userRepository.findById(request.getDealerId())
+                .orElseThrow(() -> new ResourceNotFoundException("Dealer not found with id: " + request.getDealerId()));
+
+        order.setDealer(dealer);
+        order.setTrackingNumber("TRK" + UUID.randomUUID().toString().substring(0, 10).toUpperCase());
+        order.setShipmentStatus(ShipmentStatus.PENDING);
+        order.setStatus(OrderStatus.CONFIRMED);
+        orderRepository.save(order);
+        return toResponse(order);
+    }
+
+    @Override
+    @Transactional
+    public OrderResponse updateShipmentStatus(Long orderId, String status) {
+        Order order = findOrder(orderId);
+        ShipmentStatus newStatus;
+        try {
+            newStatus = ShipmentStatus.valueOf(status.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("Invalid shipment status: " + status);
+        }
+        order.setShipmentStatus(newStatus);
+        if (newStatus == ShipmentStatus.DISPATCHED) {
+            order.setShipmentDate(LocalDateTime.now());
+            order.setStatus(OrderStatus.SHIPPED);
+        } else if (newStatus == ShipmentStatus.DELIVERED) {
+            order.setStatus(OrderStatus.DELIVERED);
+        } else if (newStatus == ShipmentStatus.CANCELLED) {
+            order.setStatus(OrderStatus.CANCELLED);
+        }
+        orderRepository.save(order);
+        return toResponse(order);
+    }
+
+    @Override
+    public OrderResponse trackShipment(String trackingNumber) {
+        Order order = orderRepository.findByTrackingNumber(trackingNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("No shipment found with tracking number: " + trackingNumber));
+        return toResponse(order);
+    }
+
+    private Order findOrder(Long orderId) {
+        return orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
+    }
+
+    private OrderResponse toResponse(Order order) {
+        List<CartItemResponse> items = order.getOrderItems().stream()
+                .map(oi -> CartItemResponse.builder()
+                        .productId(oi.getProduct().getProductId())
+                        .productName(oi.getProduct().getProductName())
+                        .quantity(oi.getQuantity())
+                        .unitPrice(oi.getPrice())
+                        .subTotal(oi.getPrice().multiply(BigDecimal.valueOf(oi.getQuantity())))
+                        .build())
+                .toList();
+        return OrderResponse.builder()
+                .orderId(order.getOrderId())
+                .orderDate(order.getOrderDate())
+                .status(order.getStatus())
+                .totalAmount(order.getTotalAmount())
+                .customerId(order.getCustomer().getUserId())
+                .customerName(order.getCustomer().getName())
+                .items(items)
+                .paymentMethod(order.getPaymentMethod())
+                .paymentStatus(order.getPaymentStatus())
+                .paymentDate(order.getPaymentDate())
+                .transactionRef(order.getTransactionRef())
+                .paymentGateway(order.getPaymentGateway())
+                .trackingNumber(order.getTrackingNumber())
+                .shipmentStatus(order.getShipmentStatus())
+                .shipmentDate(order.getShipmentDate())
+                .dealerId(order.getDealer() != null ? order.getDealer().getUserId() : null)
+                .dealerName(order.getDealer() != null ? order.getDealer().getName() : null)
+                .build();
+    }
+    
+    private OrderItemResponse toOrderItemResponse(Order order) {
+        List<CartItemResponse> items = order.getOrderItems().stream()
+                .map(oi -> CartItemResponse.builder()
+                        .productId(oi.getProduct().getProductId())
+                        .productName(oi.getProduct().getProductName())
+                        .quantity(oi.getQuantity())
+                        .unitPrice(oi.getPrice())
+                        .subTotal(oi.getPrice().multiply(BigDecimal.valueOf(oi.getQuantity())))
+                        .build())
+                .toList();
+        return OrderItemResponse.builder()
+                .orderId(order.getOrderId())
+                .orderDate(order.getOrderDate())
+                .status(order.getStatus())
+                .totalAmount(order.getTotalAmount())
+                .build();
+    }
+}

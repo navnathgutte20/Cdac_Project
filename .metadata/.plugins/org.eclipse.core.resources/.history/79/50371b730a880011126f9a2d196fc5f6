@@ -1,0 +1,5 @@
+package com.farmafriend.erp.dto.response;
+
+public class OrderItemResponse {
+
+}

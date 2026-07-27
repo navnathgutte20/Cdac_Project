@@ -1,0 +1,60 @@
+package com.farmafriend.erp.service.impl;
+
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.farmafriend.erp.dto.request.InventoryUpdateRequest;
+import com.farmafriend.erp.dto.response.InventoryResponse;
+import com.farmafriend.erp.entity.Product;
+import com.farmafriend.erp.repository.ProductRepository;
+import com.farmafriend.erp.repository.UserRepository;
+import com.farmafriend.erp.service.DealerService;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+
+@Service
+@RequiredArgsConstructor
+public class DealerServiceImpl implements DealerService {
+
+    private final ProductRepository productRepository;
+    private final UserRepository userRepository;
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<InventoryResponse> getInventoryForDealer(Long dealerId) {
+
+        List<Product> products = productRepository.findByDealer_UserId(dealerId);
+
+        return products.stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    private InventoryResponse toResponse(Product product) {
+
+        return InventoryResponse.builder()
+                .productId(product.getProductId())
+                .productName(product.getProductName())
+                .category(product.getCategory())
+               // .price(product.getPrice())
+               // .description(product.getDescription())
+             //   .account(product.getAccount())
+              //  .imageUrl(product.getImageUrl())
+             //   .active(product.isActive())
+                .availableStock(product.getAvailableStock())
+                .stockQuantity(product.getStockQuantity())
+                .reservedStock(product.getReservedStock())
+                .build();
+    }
+
+	@Override
+	public InventoryResponse updateStock(@Valid InventoryUpdateRequest request) {
+		Product inventory = productRepository.findByDealer_DealerIdAndProduct_ProductId(request.getDealerId(), request.getProductId());
+		inventory.setStockQuantity(request.getStockQuantity());
+		productRepository.save(inventory);
+		return toResponse(inventory);
+	}
+}

@@ -1,0 +1,16 @@
+package com.farmafriend.erp.service;
+
+import java.util.List;
+
+import com.farmafriend.erp.dto.request.InventoryUpdateRequest;
+import com.farmafriend.erp.dto.response.InventoryResponse;
+
+import jakarta.validation.Valid;
+
+public interface DealerService {
+
+	List<InventoryResponse> getInventoryForDealer(Long dealerId);
+
+	Object updateStock(@Valid InventoryUpdateRequest request);
+
+}

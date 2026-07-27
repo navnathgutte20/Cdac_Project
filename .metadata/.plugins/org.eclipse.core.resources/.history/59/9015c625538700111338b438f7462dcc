@@ -1,0 +1,60 @@
+package com.farmafriend.erp.service.impl;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+
+import com.farmafriend.erp.constants.ProductCategory;
+import com.farmafriend.erp.dto.response.ProductResponse;
+import com.farmafriend.erp.entity.Product;
+import com.farmafriend.erp.repository.ProductRepository;
+import com.farmafriend.erp.service.ProductService;
+
+import lombok.RequiredArgsConstructor;
+@Service
+@RequiredArgsConstructor
+public class ProductServiceimpl implements ProductService{
+	
+	public final ProductRepository productRepository;
+	@Override
+	public List<ProductResponse> getAllProducts() {
+		 List<Product> listOfProducts=productRepository.findAll();
+		 
+		 return listOfProducts.stream()
+		            .map(this::toResponse)
+		            .toList();
+		
+	}
+	
+	private ProductResponse toResponse(Product product) {
+	    return ProductResponse.builder()
+	            .productId(product.getProductId())
+	            .productName(product.getProductName())
+	            .description(product.getDescription())
+	            .price(product.getPrice())
+	            .category(product.getCategory())
+	            .imageUrl(product.getImageUrl())
+	            .active(product.isActive())
+	            .dealerId(product.getDealer().getUserId())
+	            .dealerName(product.getDealer().getNameN())
+	            
+	            .build();
+	}
+
+}
+
+/*
+ * private Long productId;
+    private String productName;
+    private ProductCategory category;
+    private BigDecimal price;
+    private String description;
+    private String account;
+    private String imageUrl;
+    private boolean active;
+    private Long dealerId;
+    private String dealerName;
+    private Integer stockQuantity;
+    private Integer availableStock;
+    private Integer reservedStock;*/

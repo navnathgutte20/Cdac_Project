@@ -7,8 +7,26 @@ import { fetchProducts } from '../../redux/slices/productSlice'
 import EmptyState from '../../components/EmptyState'
 import Loader from '../../components/Loader'
 
-const categories = ['All', 'Electronics', 'Grocery', 'Pharmacy', 'Home Care', 'Personal Care']
-
+const categories = ['All','SEEDS', 
+	'FERTILIZERS',
+	'PESTICIDES', 
+	'FUNGICIDES',
+	'HERBICIDES', 
+	'PLANT_GROWTH_REGULATORS', 
+	'MICRONUTRIENTS', 
+	'BIO_FERTILIZERS',
+	'DRIP_IRRIGATION', 
+  'SPRAYERS', 
+	'IRRIGATION_EQUIPMENT', 
+	'FARM_TOOLS',
+	'AGRICULTURAL_MACHINERY',
+	'ANIMAL_FEED', 
+	'VETERINARY_PRODUCTS',
+	'ORGANIC_FARMING', 
+	'GREENHOUSE_SUPPLIES', 
+	'HARVESTING_EQUIPMENT',
+	'STORAGE_PRODUCTS', 
+	'GARDENING_PRODUCTS']
 const Products = () => {
   const dispatch = useDispatch()
   const { list, totalPages, status } = useSelector((s) => s.products)

@@ -36,20 +36,21 @@ import AdminOrders from '../pages/admin/Orders'
 // Dealer pages
 import DealerDashboard from '../pages/dealer/Dashboard'
 import DealerProducts from '../pages/dealer/Products'
+import DealerUnclaimedOrders from '../pages/dealer/UnclaimedOrders'
 import DealerShipments from '../pages/dealer/Shipments'
-import DealerInventory from '../pages/dealer/Inventory'
 
 // RE pages
+import REDashboard from '../pages/re/Dashboard'
 import REAssignedCustomers from '../pages/re/AssignedCustomers'
+import RECustomerDetail from '../pages/re/CustomerDetail'
 
 import NotFound from '../pages/NotFound'
-import { Inventory, Inventory2 } from '@mui/icons-material'
 
 const roleHome = {
   ADMIN: '/admin/dashboard',
   CUSTOMER: '/customer/home',
   DEALER: '/dealer/dashboard',
-  REPRESENTATIVE_EXECUTIVE: '/re/customers',
+  REPRESENTATIVE_EXECUTIVE: '/re/dashboard',
 }
 
 const RootRedirect = () => {
@@ -100,7 +101,7 @@ const AppRoutes = () => {
         <Route element={<DealerLayout />}>
           <Route path="/dealer/dashboard" element={<DealerDashboard />} />
           <Route path="/dealer/products" element={<DealerProducts />} />
-          <Route path="/dealer/inventory" element={<DealerInventory/>} />
+          <Route path="/dealer/unclaimed" element={<DealerUnclaimedOrders/>} />
           <Route path="/dealer/shipments" element={<DealerShipments />} />
         </Route>
       </Route>
@@ -108,7 +109,9 @@ const AppRoutes = () => {
       {/* Representative Executive */}
       <Route element={<ProtectedRoute allowedRoles={['REPRESENTATIVE_EXECUTIVE', 'ADMIN']} />}>
         <Route element={<RELayout />}>
+          <Route path="/re/dashboard" element={<REDashboard />} />
           <Route path="/re/customers" element={<REAssignedCustomers />} />
+          <Route path="/re/customers/:id" element={<RECustomerDetail />} />
         </Route>
       </Route>
 

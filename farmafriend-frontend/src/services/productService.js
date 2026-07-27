@@ -8,5 +8,4 @@ export const productService = {
   remove: (id) => axiosInstance.delete(`/products/${id}`),
   updateStock: (payload) => axiosInstance.put('/products/stock', payload),
   getForDealer: (dealerId) => axiosInstance.get(`/products/dealer/${dealerId}`),
-  
 }

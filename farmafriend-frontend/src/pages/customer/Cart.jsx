@@ -1,18 +1,45 @@
 import React, { useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { Box, Typography, Table, TableHead, TableRow, TableCell, TableBody, IconButton, Button, Paper } from '@mui/material'
+import {
+  Box, Typography, Table, TableHead, TableRow, TableCell, TableBody, IconButton, Button, Paper,
+  Checkbox, TextField,
+} from '@mui/material'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined'
-import { Link } from 'react-router-dom'
-import { fetchCart, removeFromCart } from '../../redux/slices/cartSlice'
+import { useNavigate } from 'react-router-dom'
+import { toast } from 'react-toastify'
+import {
+  fetchCart, removeFromCart, updateCartItem, toggleItemSelected, selectAllItems, deselectAllItems,
+} from '../../redux/slices/cartSlice'
 import EmptyState from '../../components/EmptyState'
 import Loader from '../../components/Loader'
 
 const Cart = () => {
   const dispatch = useDispatch()
-  const { items, totalAmount, status } = useSelector((s) => s.cart)
+  const navigate = useNavigate()
+  const { items, selectedIds, status } = useSelector((s) => s.cart)
 
   useEffect(() => { dispatch(fetchCart()) }, [dispatch])
+
+  const allSelected = items.length > 0 && selectedIds.length === items.length
+  const someSelected = selectedIds.length > 0 && !allSelected
+
+  const selectedItems = items.filter((i) => selectedIds.includes(i.cartItemId))
+  const selectedTotal = selectedItems.reduce((sum, i) => sum + Number(i.subTotal), 0)
+
+  const handleQuantityChange = (cartItemId, quantity) => {
+    const value = Number(quantity)
+    if (!value || value < 1) return
+    dispatch(updateCartItem({ cartItemId, quantity: value }))
+  }
+
+  const handleCheckout = () => {
+    if (selectedIds.length === 0) {
+      toast.error('Select at least one product to check out')
+      return
+    }
+    navigate('/customer/checkout')
+  }
 
   return (
     <Box className="page-container">
@@ -32,6 +59,13 @@ const Cart = () => {
             <Table>
               <TableHead>
                 <TableRow>
+                  <TableCell padding="checkbox">
+                    <Checkbox
+                      checked={allSelected}
+                      indeterminate={someSelected}
+                      onChange={() => dispatch(allSelected ? deselectAllItems() : selectAllItems())}
+                    />
+                  </TableCell>
                   <TableCell>Product</TableCell>
                   <TableCell align="right">Unit price</TableCell>
                   <TableCell align="right">Quantity</TableCell>
@@ -41,10 +75,24 @@ const Cart = () => {
               </TableHead>
               <TableBody>
                 {items.map((item) => (
-                  <TableRow key={item.cartItemId} hover>
+                  <TableRow key={item.cartItemId} hover selected={selectedIds.includes(item.cartItemId)}>
+                    <TableCell padding="checkbox">
+                      <Checkbox
+                        checked={selectedIds.includes(item.cartItemId)}
+                        onChange={() => dispatch(toggleItemSelected(item.cartItemId))}
+                      />
+                    </TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>{item.productName}</TableCell>
                     <TableCell align="right" className="mono">₹{item.unitPrice}</TableCell>
-                    <TableCell align="right" className="mono">{item.quantity}</TableCell>
+                    <TableCell align="right">
+                      <TextField
+                        type="number"
+                        size="small"
+                        value={item.quantity}
+                        onChange={(e) => handleQuantityChange(item.cartItemId, e.target.value)}
+                        inputProps={{ min: 1, style: { textAlign: 'right', width: 56 } }}
+                      />
+                    </TableCell>
                     <TableCell align="right" className="mono" sx={{ fontWeight: 700 }}>₹{item.subTotal}</TableCell>
                     <TableCell align="right">
                       <IconButton size="small" color="error" onClick={() => dispatch(removeFromCart(item.cartItemId))}>
@@ -58,10 +106,11 @@ const Cart = () => {
           </Paper>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 3 }}>
             <Typography variant="h6">
-              Total: <Box component="span" className="mono" sx={{ fontWeight: 700, color: 'primary.main' }}>₹{totalAmount}</Box>
+              {selectedIds.length} of {items.length} selected — Total:{' '}
+              <Box component="span" className="mono" sx={{ fontWeight: 700, color: 'primary.main' }}>₹{selectedTotal}</Box>
             </Typography>
-            <Button variant="contained" size="large" component={Link} to="/customer/checkout">
-              Proceed to checkout
+            <Button variant="contained" size="large" onClick={handleCheckout} disabled={selectedIds.length === 0}>
+              Checkout selected ({selectedIds.length})
             </Button>
           </Box>
         </>

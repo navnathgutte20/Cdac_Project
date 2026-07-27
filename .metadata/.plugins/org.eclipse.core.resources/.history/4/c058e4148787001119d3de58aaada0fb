@@ -1,5 +1,0 @@
-package com.farmafriend.erp.service;
-
-public interface CartService {
-
-}

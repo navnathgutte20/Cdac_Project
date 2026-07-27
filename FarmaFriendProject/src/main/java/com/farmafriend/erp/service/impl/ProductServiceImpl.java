@@ -1,0 +1,103 @@
+package com.farmafriend.erp.service.impl;
+
+import com.farmafriend.erp.dto.request.ProductRequest;
+import com.farmafriend.erp.dto.response.PageResponse;
+import com.farmafriend.erp.dto.response.ProductResponse;
+import com.farmafriend.erp.entity.Product;
+import com.farmafriend.erp.exception.ResourceNotFoundException;
+import com.farmafriend.erp.repository.ProductRepository;
+import com.farmafriend.erp.service.ProductService;
+import jakarta.persistence.criteria.Predicate;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class ProductServiceImpl implements ProductService {
+
+	private final ProductRepository productRepository;
+
+	@Override
+	@Transactional
+	public ProductResponse createProduct(ProductRequest request) {
+		Product product = Product.builder().productName(request.getProductName()).category(request.getCategory())
+				.price(request.getPrice()).description(request.getDescription()).account(request.getAccount())
+				.imageUrl(request.getImageUrl()).active(true).build();
+		product = productRepository.save(product);
+		return toResponse(product);
+	}
+
+	@Override
+	@Transactional
+	public ProductResponse updateProduct(Long productId, ProductRequest request) {
+		Product product = productRepository.findById(productId)
+				.orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + productId));
+		product.setProductName(request.getProductName());
+		product.setCategory(request.getCategory());
+		product.setPrice(request.getPrice());
+		product.setDescription(request.getDescription());
+		product.setAccount(request.getAccount());
+		if (request.getImageUrl() != null) {
+			product.setImageUrl(request.getImageUrl());
+		}
+		product = productRepository.save(product);
+		return toResponse(product);
+	}
+
+	@Override
+	@Transactional
+	public void deleteProduct(Long productId) {
+		Product product = productRepository.findById(productId)
+				.orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + productId));
+		product.setActive(false);
+		productRepository.save(product);
+	}
+
+	@Override
+	public ProductResponse getProduct(Long productId) {
+		Product product = productRepository.findById(productId)
+				.orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + productId));
+		return toResponse(product);
+	}
+
+	@Override
+	public PageResponse<ProductResponse> searchProducts(String name, String category, BigDecimal minPrice,
+			BigDecimal maxPrice, Pageable pageable) {
+		Specification<Product> spec = (root, query, cb) -> {
+			List<Predicate> predicates = new ArrayList<>();
+			predicates.add(cb.isTrue(root.get("active")));
+			if (name != null && !name.isBlank()) {
+				predicates.add(cb.like(cb.lower(root.get("productName")), "%" + name.toLowerCase() + "%"));
+			}
+			if (category != null && !category.isBlank()) {
+				predicates.add(cb.equal(cb.lower(root.get("category")), category.toLowerCase()));
+			}
+			if (minPrice != null) {
+				predicates.add(cb.ge(root.get("price"), minPrice));
+			}
+			if (maxPrice != null) {
+				predicates.add(cb.le(root.get("price"), maxPrice));
+			}
+			return cb.and(predicates.toArray(new Predicate[0]));
+		};
+
+		Page<Product> page = productRepository.findAll(spec, pageable);
+
+		return PageResponse.from(page.map(this::toResponse));
+	}
+
+	private ProductResponse toResponse(Product product) {
+		return ProductResponse.builder().productId(product.getProductId()).productName(product.getProductName())
+				.category(product.getCategory()).price(product.getPrice()).description(product.getDescription())
+				.account(product.getAccount()).imageUrl(product.getImageUrl()).active(product.isActive())
+				.availableStock(product.getAvailableStock()).build();
+	}
+}

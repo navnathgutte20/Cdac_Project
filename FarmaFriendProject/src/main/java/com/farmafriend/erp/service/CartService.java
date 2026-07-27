@@ -1,0 +1,19 @@
+package com.farmafriend.erp.service;
+
+import com.farmafriend.erp.dto.request.CartItemRequest;
+import com.farmafriend.erp.dto.response.CartResponse;
+
+import jakarta.validation.Valid;
+
+public interface CartService {
+	public CartResponse getCart(Long customerId);
+
+	public CartResponse addItem(Long customerId, @Valid CartItemRequest request);
+
+	public CartResponse updateItemQuantity(Long customerId, Long cartItemId, int quantity);
+
+	public CartResponse removeItem(Long customerId, Long cartItemId);
+
+	public void clearCart(Long customerId);
+
+}

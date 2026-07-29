@@ -15,6 +15,10 @@ public final class SecurityUtils {
         return getCurrentUser().getUserId();
     }
 
+    public static String getCurrentUserRole() {
+        return getCurrentUser().getRole();
+    }
+
     public static String getCurrentUserEmail() {
         return getCurrentUser().getEmail();
     }

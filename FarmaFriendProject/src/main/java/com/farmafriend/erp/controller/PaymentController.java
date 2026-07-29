@@ -20,7 +20,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/payment")
+@RequestMapping("/api/mypayment")
 @RequiredArgsConstructor
 @Tag(name = "Payments", description = "Order payment processing")
 public class PaymentController {

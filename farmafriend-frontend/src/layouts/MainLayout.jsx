@@ -13,6 +13,7 @@ import PersonOutlineIcon from '@mui/icons-material/PersonOutline'
 import { useDispatch, useSelector } from 'react-redux'
 import { logout } from '../redux/slices/authSlice'
 import Logo from '../components/Logo'
+import ChatWidget from '../components/ChatWidget'
 
 const navItems = [
   { label: 'Home', path: '/customer/home', icon: <HomeOutlinedIcon fontSize="small" /> },
@@ -111,6 +112,8 @@ const MainLayout = () => {
       <Box component="main" sx={{ flexGrow: 1 }}>
         <Outlet />
       </Box>
+
+      <ChatWidget />
     </Box>
   )
 }

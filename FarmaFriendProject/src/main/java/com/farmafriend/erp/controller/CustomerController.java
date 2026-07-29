@@ -1,15 +1,5 @@
 package com.farmafriend.erp.controller;
 
-import java.util.List;
-
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
 import com.farmafriend.erp.constants.RoleName;
 import com.farmafriend.erp.dto.response.UserResponse;
 import com.farmafriend.erp.entity.User;
@@ -17,9 +7,13 @@ import com.farmafriend.erp.exception.BadRequestException;
 import com.farmafriend.erp.exception.ResourceNotFoundException;
 import com.farmafriend.erp.repository.UserRepository;
 import com.farmafriend.erp.utils.ApiResponse;
-
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/customers")
@@ -33,15 +27,13 @@ public class CustomerController {
     public ResponseEntity<ApiResponse<UserResponse>> getCustomer(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(toResponse(findCustomer(id))));
     }
-   
-    
+
     private User findCustomer(Long id) {
         User customer = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found with id: " + id));
         if (customer.getRole() != RoleName.CUSTOMER) {
             throw new BadRequestException("The specified user is not a customer");
         }
-      //  System.out.println(customer.getPhone()+"--->"+customer.getAddress());
         return customer;
     }
     

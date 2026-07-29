@@ -27,6 +27,7 @@ const categories = ['All','SEEDS',
 	'HARVESTING_EQUIPMENT',
 	'STORAGE_PRODUCTS', 
 	'GARDENING_PRODUCTS']
+
 const Products = () => {
   const dispatch = useDispatch()
   const { list, totalPages, status } = useSelector((s) => s.products)

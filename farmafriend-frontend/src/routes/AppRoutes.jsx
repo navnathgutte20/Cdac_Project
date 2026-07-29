@@ -15,6 +15,7 @@ import RELayout from '../layouts/RELayout'
 import Login from '../pages/auth/Login'
 import Register from '../pages/auth/Register'
 import ForgotPassword from '../pages/auth/ForgotPassword'
+import ResetPassword from '../pages/auth/ResetPassword'
 
 // Customer pages
 import Home from '../pages/customer/Home'
@@ -38,6 +39,7 @@ import DealerDashboard from '../pages/dealer/Dashboard'
 import DealerProducts from '../pages/dealer/Products'
 import DealerUnclaimedOrders from '../pages/dealer/UnclaimedOrders'
 import DealerShipments from '../pages/dealer/Shipments'
+
 
 // RE pages
 import REDashboard from '../pages/re/Dashboard'
@@ -69,6 +71,7 @@ const AppRoutes = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
       </Route>
 
       {/* Customer */}
@@ -101,7 +104,7 @@ const AppRoutes = () => {
         <Route element={<DealerLayout />}>
           <Route path="/dealer/dashboard" element={<DealerDashboard />} />
           <Route path="/dealer/products" element={<DealerProducts />} />
-          <Route path="/dealer/unclaimed" element={<DealerUnclaimedOrders/>} />
+          <Route path="/dealer/orders" element={<DealerUnclaimedOrders/>} />
           <Route path="/dealer/shipments" element={<DealerShipments />} />
         </Route>
       </Route>

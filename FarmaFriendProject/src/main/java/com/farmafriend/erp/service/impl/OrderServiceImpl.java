@@ -37,6 +37,7 @@ import com.farmafriend.erp.repository.OrderRepository;
 import com.farmafriend.erp.repository.ProductRepository;
 import com.farmafriend.erp.repository.UserRepository;
 import com.farmafriend.erp.service.OrderService;
+import com.farmafriend.erp.utils.SecurityUtils;
 
 import lombok.RequiredArgsConstructor;
 
@@ -49,6 +50,7 @@ public class OrderServiceImpl implements OrderService {
     private final UserRepository userRepository;
     private final DeliveryAddressRepository deliveryAddressRepository;
     private final ProductRepository productRepository;
+    private final com.farmafriend.erp.service.EmailService emailService;
 
     @Override
     @Transactional
@@ -93,7 +95,6 @@ public class OrderServiceImpl implements OrderService {
                     .price(ci.getUnitPrice())
                     .build();
             order.getOrderItems().add(item);
-       //     order.setDealer(ci.getProduct().getDealer());
             total = total.add(ci.getUnitPrice().multiply(BigDecimal.valueOf(ci.getQuantity())));
         }
         order.setTotalAmount(total);
@@ -103,6 +104,8 @@ public class OrderServiceImpl implements OrderService {
         // anything not selected stays behind for a later order.
         cartItemRepository.deleteAll(cartItems);
 
+        emailService.sendOrderSuccessEmail(order);
+
         return toResponse(order);
     }
    
@@ -111,8 +114,35 @@ public class OrderServiceImpl implements OrderService {
 
         Order order = orderRepository.findByIdWithItems(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
-        System.out.println(order);
+        assertCanViewOrder(order);
         return toOrderItemResponse(order);
+    }
+
+    /**
+     * Guards {@link #getOrder(Long)} against IDOR access: a customer may only
+     * view their own orders, a dealer only orders assigned to them, and a
+     * representative executive only orders belonging to their own customers.
+     * Admins can view any order.
+     */
+    private void assertCanViewOrder(Order order) {
+        String role = SecurityUtils.getCurrentUserRole();
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+
+        boolean allowed = switch (role) {
+            case "ADMIN" -> true;
+            case "CUSTOMER" -> order.getCustomer() != null && order.getCustomer().getUserId().equals(currentUserId);
+            case "DEALER" -> order.getDealer() != null && order.getDealer().getUserId().equals(currentUserId);
+            case "REPRESENTATIVE_EXECUTIVE" -> order.getCustomer() != null
+                    && order.getCustomer().getRepresentative() != null
+                    && order.getCustomer().getRepresentative().getUserId().equals(currentUserId);
+            default -> false;
+        };
+
+        if (!allowed) {
+            // Reported as "not found" rather than "forbidden" so an
+            // unauthorized caller can't use this to confirm an order id exists.
+            throw new ResourceNotFoundException("Order not found");
+        }
     }
     @Transactional
     @Override
@@ -211,11 +241,19 @@ public class OrderServiceImpl implements OrderService {
             order.setShipmentDate(LocalDateTime.now());
             order.setStatus(OrderStatus.SHIPPED);
             deductInventoryStock(order);
+            orderRepository.save(order);
+            initializeForEmail(order);
+            emailService.sendShipmentEmail(order);
+            return toResponse(order);
         } else if (newStatus == ShipmentStatus.DELIVERED) {
             order.setStatus(OrderStatus.DELIVERED);
-            order.setPaymentStatus(PaymentStatus.valueOf("SUCCESS"));
+            order.setPaymentStatus(PaymentStatus.SUCCESS);
             deductInventoryStock(order);
             
+            orderRepository.save(order);
+            initializeForEmail(order);
+            emailService.sendDeliveryEmail(order);
+            return toResponse(order);
         } else if (newStatus == ShipmentStatus.CANCELLED) {
             order.setStatus(OrderStatus.CANCELLED);
             restoreInventoryStock(order);
@@ -277,6 +315,31 @@ public class OrderServiceImpl implements OrderService {
     private Order findOrder(Long orderId) {
         return orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
+    }
+
+    /**
+     * Emails are sent on a separate thread via {@code @Async}, which runs
+     * after this transaction's Hibernate session is gone. Any lazy
+     * association touched for the first time on that thread would throw
+     * LazyInitializationException, so we resolve everything the email
+     * templates need here first, while the session is still open.
+     */
+    private void initializeForEmail(Order order) {
+        if (order.getCustomer() != null) {
+            order.getCustomer().getName();
+            order.getCustomer().getEmail();
+        }
+        order.getOrderItems().forEach(item -> {
+            if (item.getProduct() != null) {
+                item.getProduct().getProductName();
+            }
+        });
+        if (order.getDeliveryAddress() != null) {
+            order.getDeliveryAddress().getAddressLine();
+            order.getDeliveryAddress().getCity();
+            order.getDeliveryAddress().getState();
+            order.getDeliveryAddress().getPincode();
+        }
     }
 
     private OrderResponse toResponse(Order order) {

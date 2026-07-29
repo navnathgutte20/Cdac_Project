@@ -1,8 +1,10 @@
 package com.farmafriend.erp.controller;
 
+import com.farmafriend.erp.dto.request.ForgotPasswordRequest;
 import com.farmafriend.erp.dto.request.LoginRequest;
 import com.farmafriend.erp.dto.request.RefreshTokenRequest;
 import com.farmafriend.erp.dto.request.RegisterRequest;
+import com.farmafriend.erp.dto.request.ResetPasswordRequest;
 import com.farmafriend.erp.dto.response.JwtResponse;
 import com.farmafriend.erp.service.AuthService;
 import com.farmafriend.erp.utils.ApiResponse;
@@ -44,5 +46,18 @@ public class AuthController {
     public ResponseEntity<ApiResponse<Void>> logout() {
         // Stateless JWT - client discards tokens. Endpoint kept for API completeness / token blacklisting hook.
         return ResponseEntity.ok(ApiResponse.success("Logout successful", null));
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse<Void>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        authService.forgotPassword(request);
+        return ResponseEntity.ok(ApiResponse.success(
+                "If an account exists for this email, a reset link has been sent.", null));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<Void>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request);
+        return ResponseEntity.ok(ApiResponse.success("Password reset successfully", null));
     }
 }

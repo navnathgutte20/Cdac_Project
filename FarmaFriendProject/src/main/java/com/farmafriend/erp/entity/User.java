@@ -17,53 +17,61 @@ import java.util.List;
 @Builder
 public class User {
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long userId;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long userId;
 
-	@Column(nullable = false)
-	private String name;
+    @Column(nullable = false)
+    private String name;
 
-	@Column(nullable = false, unique = true)
-	private String email;
+    @Column(nullable = false, unique = true)
+    private String email;
 
-	@Column(nullable = false)
-	private String password;
+    @Column(nullable = false)
+    private String password;
 
-	@Enumerated(EnumType.STRING)
-	@Column(nullable = false)
-	private RoleName role;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private RoleName role;
 
-	private String phone;
+    private String phone;
+    
+    private String address;
 
-	private String address;
+  
+    @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<DeliveryAddress> deliveryAddresses = new ArrayList<>();
+    
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "representative_id")
+    private User representative;
 
-	@OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
-	private List<DeliveryAddress> deliveryAddresses = new ArrayList<>();
 
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "representative_id")
-	private User representative;
+    private String location;
 
-	private String location;
+    @Builder.Default
+    private boolean enabled = true;
 
-	@Builder.Default
-	private boolean enabled = true;
+    /** Set when a password reset is requested; cleared once used or expired */
+    private String resetToken;
 
-	@Column(updatable = false)
-	private LocalDateTime createdAt;
+    private LocalDateTime resetTokenExpiry;
 
-	private LocalDateTime updatedAt;
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
 
-	@PrePersist
-	protected void onCreate() {
-		this.createdAt = LocalDateTime.now();
-		this.updatedAt = LocalDateTime.now();
-	}
+    private LocalDateTime updatedAt;
 
-	@PreUpdate
-	protected void onUpdate() {
-		this.updatedAt = LocalDateTime.now();
-	}
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
 
 }

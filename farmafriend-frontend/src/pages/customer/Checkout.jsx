@@ -8,10 +8,24 @@ import { toast } from 'react-toastify'
 import { useDispatch, useSelector } from 'react-redux'
 import { addressService } from '../../services/addressService'
 import { placeOrder } from '../../redux/slices/orderSlice'
-import { orderService } from '../../services/orderService'
+import { paymentService } from '../../services/paymentService' // create-order / verify calls
 import { fetchCart } from '../../redux/slices/cartSlice'
 
-const steps = ['Delivery address', 'Payment method', 'Order summary']
+const steps = ['Delivery address', 'Order summary', 'Payment method']
+
+// Loads the Razorpay checkout script once, reuses it on subsequent calls.
+const loadRazorpayScript = () =>
+  new Promise((resolve) => {
+    if (window.Razorpay) {
+      resolve(true)
+      return
+    }
+    const script = document.createElement('script')
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+    script.onload = () => resolve(true)
+    script.onerror = () => resolve(false)
+    document.body.appendChild(script)
+  })
 
 const Checkout = () => {
   const [activeStep, setActiveStep] = useState(0)
@@ -24,7 +38,6 @@ const Checkout = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
 
-  // Only the products the customer checked off in the cart are part of this order.
   const checkoutItems = items.filter((i) => selectedIds.includes(i.cartItemId))
   const checkoutTotal = checkoutItems.reduce((sum, i) => sum + Number(i.subTotal), 0)
 
@@ -66,7 +79,73 @@ const Checkout = () => {
 
   const handleBack = () => setActiveStep((s) => s - 1)
 
-  const handlePlaceOrder = async () => {
+  const selectedAddressDetail = addresses.find((a) => String(a.addressId) === String(selectedAddress))
+
+  // Places the order (backend) and finalizes it — used both for COD and
+  // after a successful Razorpay payment verification.
+  const finalizeOrder = async (order, paymentDetails) => {
+    if (paymentDetails) {
+      await paymentService.verifyPayment({
+        orderId: order.orderId,
+        razorpayOrderId: paymentDetails.razorpay_order_id,
+        razorpayPaymentId: paymentDetails.razorpay_payment_id,
+        razorpaySignature: paymentDetails.razorpay_signature,
+      })
+    }
+    dispatch(fetchCart())
+    toast.success('Order placed successfully!')
+    navigate('/customer/orders')
+  }
+
+  const openRazorpayCheckout = async (order) => {
+    const scriptLoaded = await loadRazorpayScript()
+    if (!scriptLoaded) {
+      toast.error('Unable to load payment gateway. Please try again.')
+      setPlacing(false)
+      return
+    }
+
+    // Ask the backend to create a Razorpay order for this FarmaFriend order.
+    const { data } = await paymentService.createOrder({
+      orderId: order.orderId,
+      amount: checkoutTotal,
+    })
+
+    const options = {
+      key: data.razorpayKeyId,
+      amount: data.amount,
+      currency: data.currency || 'INR',
+      name: 'FarmaFriend',
+      description: `Payment for Order #${order.orderId}`,
+      order_id: data.razorpayOrderId,
+      handler: async (response) => {
+        try {
+          await finalizeOrder(order, response)
+        } catch (err) {
+          toast.error('Payment verification failed. Please contact support.')
+        } finally {
+          setPlacing(false)
+        }
+      },
+      modal: {
+        ondismiss: () => {
+          toast.info('Payment cancelled')
+          setPlacing(false)
+        },
+      },
+      prefill: {},
+      theme: { color: '#2f5233' }, // fern green
+    }
+
+    const rzp = new window.Razorpay(options)
+    rzp.on('payment.failed', () => {
+      toast.error('Payment failed. Please try again.')
+      setPlacing(false)
+    })
+    rzp.open()
+  }
+
+  const handleProceedToPayment = async () => {
     if (!selectedAddress) {
       toast.error('Please select or add a delivery address')
       return
@@ -75,29 +154,35 @@ const Checkout = () => {
       toast.error('Select at least one product to check out')
       return
     }
+
     setPlacing(true)
     try {
       const result = await dispatch(placeOrder({
         addressId: selectedAddress,
         cartItemIds: checkoutItems.map((i) => i.cartItemId),
+        paymentMethod,
       }))
-      if (placeOrder.fulfilled.match(result)) {
-        const order = result.payload
-        await orderService.initiatePayment({ orderId: order.orderId, paymentMethod })
-        // Only the checked-out items left the cart on the backend — refresh
-        // so anything left unselected still shows up here.
-        dispatch(fetchCart())
-        toast.success('Order placed successfully!')
-        navigate('/customer/orders')
-      } else {
+
+      if (!placeOrder.fulfilled.match(result)) {
         toast.error(result.payload || 'Failed to place order')
+        setPlacing(false)
+        return
       }
-    } finally {
+
+      const order = result.payload
+
+      if (paymentMethod === 'CASH_ON_DELIVERY') {
+        await finalizeOrder(order, null)
+        setPlacing(false)
+      } else {
+        // Razorpay flow: create-order -> checkout -> verify happens inside.
+        await openRazorpayCheckout(order)
+      }
+    } catch (err) {
+      toast.error('Something went wrong while placing your order')
       setPlacing(false)
     }
   }
-
-  const selectedAddressDetail = addresses.find((a) => String(a.addressId) === String(selectedAddress))
 
   return (
     <Box className="page-container">
@@ -111,6 +196,7 @@ const Checkout = () => {
 
       <Grid container spacing={3}>
         <Grid item xs={12} md={7}>
+          {/* Step 1: Delivery address */}
           {activeStep === 0 && (
             <Paper sx={{ p: 3 }}>
               <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>Delivery address</Typography>
@@ -142,24 +228,8 @@ const Checkout = () => {
             </Paper>
           )}
 
+          {/* Step 2: Review order */}
           {activeStep === 1 && (
-            <Paper sx={{ p: 3 }}>
-              <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>Payment method</Typography>
-              <RadioGroup value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
-                <FormControlLabel value="UPI" control={<Radio color="primary" />} label="UPI" />
-                <FormControlLabel value="NET_BANKING" control={<Radio color="primary" />} label="Net Banking" />
-                <FormControlLabel value="CREDIT_CARD" control={<Radio color="primary" />} label="Credit Card" />
-                <FormControlLabel value="DEBIT_CARD" control={<Radio color="primary" />} label="Debit Card" />
-                <FormControlLabel value="CASH_ON_DELIVERY" control={<Radio color="primary" />} label="Cash on Delivery" />
-              </RadioGroup>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-                <Button onClick={handleBack} color="inherit">Back</Button>
-                <Button variant="contained" onClick={handleNext}>Next</Button>
-              </Box>
-            </Paper>
-          )}
-
-          {activeStep === 2 && (
             <Paper sx={{ p: 3 }}>
               <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>Review your order</Typography>
 
@@ -169,9 +239,6 @@ const Checkout = () => {
                   ? `${selectedAddressDetail.addressLine}, ${selectedAddressDetail.city}, ${selectedAddressDetail.state} - ${selectedAddressDetail.pincode}`
                   : '—'}
               </Typography>
-
-              <Typography variant="body2" color="text.secondary">Payment method</Typography>
-              <Typography variant="body1" fontWeight={600} sx={{ mb: 2 }}>{paymentMethod.replace(/_/g, ' ')}</Typography>
 
               <Divider sx={{ my: 2 }} />
 
@@ -188,9 +255,32 @@ const Checkout = () => {
               </Box>
 
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
+                <Button onClick={handleBack} color="inherit">Back</Button>
+                <Button variant="contained" onClick={handleNext}>Next</Button>
+              </Box>
+            </Paper>
+          )}
+
+          {/* Step 3: Payment method */}
+          {activeStep === 2 && (
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>Payment method</Typography>
+              <RadioGroup value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+                <FormControlLabel value="UPI" control={<Radio color="primary" />} label="UPI" />
+                <FormControlLabel value="NET_BANKING" control={<Radio color="primary" />} label="Net Banking" />
+                <FormControlLabel value="CREDIT_CARD" control={<Radio color="primary" />} label="Credit Card" />
+                <FormControlLabel value="DEBIT_CARD" control={<Radio color="primary" />} label="Debit Card" />
+                <FormControlLabel value="CASH_ON_DELIVERY" control={<Radio color="primary" />} label="Cash on Delivery" />
+              </RadioGroup>
+
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
                 <Button onClick={handleBack} color="inherit" disabled={placing}>Back</Button>
-                <Button variant="contained" size="large" onClick={handlePlaceOrder} disabled={placing}>
-                  {placing ? 'Placing order…' : 'Place order'}
+                <Button variant="contained" size="large" onClick={handleProceedToPayment} disabled={placing}>
+                  {placing
+                    ? 'Processing…'
+                    : paymentMethod === 'CASH_ON_DELIVERY'
+                      ? 'Place order'
+                      : 'Proceed to payment'}
                 </Button>
               </Box>
             </Paper>

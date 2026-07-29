@@ -107,12 +107,12 @@ public class OrderController {
 	}
 
 	// ---- Payment (merged into Order) ----
-	@PostMapping("/payment")
-	public ResponseEntity<ApiResponse<OrderResponse>> initiatePayment(
-			@Valid @RequestBody PaymentInitiateRequest request) {
-		return ResponseEntity.status(HttpStatus.CREATED)
-				.body(ApiResponse.success("Payment processed", orderService.initiatePayment(request)));
-	}
+//	@PostMapping("/payment")
+//	public ResponseEntity<ApiResponse<OrderResponse>> initiatePayment(
+//			@Valid @RequestBody PaymentInitiateRequest request) {
+//		return ResponseEntity.status(HttpStatus.CREATED)
+//				.body(ApiResponse.success("Payment processed", orderService.initiatePayment(request)));
+//	}
 
 	// ---- Shipment (merged into Order) ----
 	@PostMapping("/shipment")

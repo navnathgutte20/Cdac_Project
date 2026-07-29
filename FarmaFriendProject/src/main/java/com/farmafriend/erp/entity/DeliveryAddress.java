@@ -27,4 +27,5 @@ public class DeliveryAddress {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_id")
     private User customer;
+    
 }

@@ -7,7 +7,7 @@ import LocalShippingOutlinedIcon from '@mui/icons-material/LocalShippingOutlined
 const navItems = [
   { label: 'Dashboard', path: '/dealer/dashboard', icon: <DashboardOutlinedIcon fontSize="small" /> },
   { label: 'My Inventory', path: '/dealer/products', icon: <Inventory2OutlinedIcon fontSize="small" /> },
-  { label: 'Show Orders', path: '/dealer/unclaimed', icon: <Inventory2OutlinedIcon fontSize="small" /> },
+  { label: 'Unclaimed Orders', path: '/dealer/orders', icon: <Inventory2OutlinedIcon fontSize="small" /> },
   { label: 'Shipments', path: '/dealer/shipments', icon: <LocalShippingOutlinedIcon fontSize="small" /> },
 ]
 

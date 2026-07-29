@@ -56,7 +56,7 @@ public class DeliveryAddressController {
                 .city(request.getCity())
                 .state(request.getState())
                 .pincode(request.getPincode())
-                .customer(customer)
+              //  .customer(customer)
                 .build();
         address = deliveryAddressRepository.save(address);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Address added", address));

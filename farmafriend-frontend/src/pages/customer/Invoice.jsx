@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { Box, Typography, Paper, Table, TableHead, TableRow, TableCell, TableBody, Button, Divider, Grid } from '@mui/material'
 import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined'
 import { orderService } from '../../services/orderService'
+import { paymentService } from '../../services/paymentService'
 import Loader from '../../components/Loader'
 import Logo from '../../components/Logo'
 import StatusChip from '../../components/StatusChip'
@@ -10,12 +11,22 @@ import StatusChip from '../../components/StatusChip'
 const Invoice = () => {
   const { id } = useParams()
   const [order, setOrder] = useState(null)
+  const [payment, setPayment] = useState(null)
 
   useEffect(() => {
     orderService.getInvoice(id).then((res) => setOrder(res.data.data)).catch(() => {})
   }, [id])
 
+  useEffect(() => {
+    if (!order?.orderId) return
+    paymentService.getStatus(order.orderId)
+      .then((res) => setPayment(res.data))
+      .catch(() => {}) // e.g. COD orders may have no Payment record — fail silently
+  }, [order?.orderId])
+
   if (!order) return <Loader />
+
+  const paymentStatus = payment?.status || order.paymentStatus
 
   return (
     <Box className="page-container">
@@ -32,7 +43,7 @@ const Invoice = () => {
             <Typography variant="body2" color="text.secondary">{new Date(order.orderDate).toLocaleString()}</Typography>
           </Grid>
           <Grid item xs={6}>
-            <Typography variant="overline" color="text.secondary">Billed to</Typography>
+            <Typography variant="overline" color="text.secondary">customer Name</Typography>
             <Typography fontWeight={700}>{order.customerName}</Typography>
           </Grid>
           <Grid item xs={6}>
@@ -40,11 +51,16 @@ const Invoice = () => {
             <Box sx={{ mt: 0.5 }}><StatusChip status={order.status} /></Box>
           </Grid>
           <Grid item xs={6}>
-            <Typography variant="overline" color="text.secondary">Payment</Typography>
+            <Typography variant="overline" color="text.secondary">Payment status</Typography>
             <Box sx={{ mt: 0.5, display: 'flex', gap: 1, alignItems: 'center' }}>
-              <StatusChip status={order.paymentStatus} />
+              <StatusChip status={paymentStatus} />
               <Typography variant="caption" color="text.secondary">{order.paymentMethod?.replace(/_/g, ' ')}</Typography>
             </Box>
+            {payment?.razorpayPaymentId && (
+              <Typography variant="caption" color="text.secondary" className="mono" sx={{ display: 'block', mt: 0.5 }}>
+                {/* Txn: {payment.razorpayPaymentId} */}
+              </Typography>
+            )}
           </Grid>
           {order.trackingNumber && (
             <Grid item xs={12}>

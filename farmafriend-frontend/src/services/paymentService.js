@@ -1,6 +1,7 @@
-import axiosInstance from './axiosInstance'
+import paymentApi from './paymentApi'
 
 export const paymentService = {
-  createOrder: (payload) => api.post('/api/payment/create-order', payload),
-  verifyPayment: (payload) => api.post('/api/payment/verify', payload),
+  createOrder: (payload) => paymentApi.post('/api/payment/create-order', payload),
+  verifyPayment: (payload) => paymentApi.post('/api/payment/verify', payload),
+  getStatus: (orderId) => paymentApi.get(`/api/payment/status/${orderId}`),
 }

@@ -20,9 +20,11 @@ const emptyProductForm = {
 }
 
 const Products = () => {
-  const [products, setProducts] = useState(null)
-  const [addOpen, setAddOpen] = useState(false)
   const [productForm, setProductForm] = useState(emptyProductForm)
+  const [products, setProducts] = useState(null)
+  const [imageFile, setImageFile] = useState(null)
+  const [uploading, setUploading] = useState(false)
+  const [addOpen, setAddOpen] = useState(false)
   const [editing, setEditing] = useState(null)
   const [stockValue, setStockValue] = useState('')
   const [removing, setRemoving] = useState(null)
@@ -49,25 +51,64 @@ const Products = () => {
     }
   }
 
-  const handleAddProduct = async () => {
-    if (!productForm.productName || !productForm.category || !productForm.price || productForm.initialStock === '') {
-      toast.error('Product name, category, price, and initial stock are required')
-      return
+  const uploadImage = async () => {
+
+    if (!imageFile) return "";
+
+    const formData = new FormData();
+    formData.append("file", imageFile);
+
+    const response = await dealerService.uploadImage(formData);
+
+    return response.data;
+}
+const handleAddProduct = async () => {
+
+    if (
+        !productForm.productName ||
+        !productForm.category ||
+        !productForm.price ||
+        productForm.initialStock === ""
+    ) {
+        toast.error("Product name, category, price, and stock are required");
+        return;
     }
+
     try {
-      await dealerService.addProduct({
-        ...productForm,
-        price: Number(productForm.price),
-        initialStock: Number(productForm.initialStock),
-      })
-      toast.success('Product added to your inventory')
-      setAddOpen(false)
-      setProductForm(emptyProductForm)
-      load()
+
+        setUploading(true);
+
+        let imageUrl = "";
+
+        if (imageFile) {
+            imageUrl = await uploadImage();
+        }
+
+        await dealerService.addProduct({
+            ...productForm,
+            imageUrl,
+            price: Number(productForm.price),
+            initialStock: Number(productForm.initialStock),
+        });
+
+        toast.success("Product added successfully");
+
+        setAddOpen(false);
+        setProductForm(emptyProductForm);
+        setImageFile(null);
+
+        load();
+
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to add product')
+
+        toast.error(
+            err.response?.data?.message || "Failed to add product"
+        );
+
+    } finally {
+        setUploading(false);
     }
-  }
+}
 
   const handleRemove = async () => {
     try {
@@ -190,10 +231,20 @@ const Products = () => {
               />
             </Grid>
             <Grid item xs={12}>
-              <TextField
-                fullWidth label="Image URL" value={productForm.imageUrl}
-                onChange={(e) => setProductForm({ ...productForm, imageUrl: e.target.value })}
-              />
+                <Button
+                    variant="outlined"
+                    component="label"
+                    fullWidth
+                >
+                    {imageFile ? imageFile.name : "Choose Product Image"}
+
+                    <input
+                        hidden
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => setImageFile(e.target.files[0])}
+                    />
+                </Button>
             </Grid>
             <Grid item xs={12}>
               <TextField
@@ -205,7 +256,9 @@ const Products = () => {
         </DialogContent>
         <DialogActions sx={{ p: 2.5 }}>
           <Button onClick={() => setAddOpen(false)} color="inherit">Cancel</Button>
-          <Button variant="contained" onClick={handleAddProduct}>Add product</Button>
+          <Button variant="contained" disabled={uploading} onClick={handleAddProduct}>
+            {uploading ? "Uploading..." : "Add Product"}
+          </Button>
         </DialogActions>
       </Dialog>
 

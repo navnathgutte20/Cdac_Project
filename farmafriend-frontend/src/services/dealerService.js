@@ -14,4 +14,17 @@ export const dealerService = {
   updateOwnStock: (productId, stockQuantity) =>
     axiosInstance.put(`/dealer/inventory/${productId}/stock`, { stockQuantity }),
   removeProduct: (productId) => axiosInstance.delete(`/dealer/inventory/${productId}`),
+
+  
+  uploadImage(formData) {
+    return axiosInstance.post(
+        "/image/upload",
+        formData,
+        {
+            headers: {
+                "Content-Type": "multipart/form-data"
+            }
+        }
+    );
+},
 }

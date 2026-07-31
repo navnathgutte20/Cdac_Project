@@ -110,9 +110,10 @@ const Checkout = () => {
       orderId: order.orderId,
       amount: checkoutTotal,
     })
+    console.log('Razorpay create-order response:', data)
 
     const options = {
-      key: data.razorpayKeyId,
+      key: data.key,
       amount: data.amount,
       currency: data.currency || 'INR',
       name: 'FarmaFriend',

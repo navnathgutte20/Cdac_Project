@@ -98,6 +98,7 @@ public class OrderServiceImpl implements OrderService {
             total = total.add(ci.getUnitPrice().multiply(BigDecimal.valueOf(ci.getQuantity())));
         }
         order.setTotalAmount(total);
+      //  order.setPaymentMethod();
         order = orderRepository.save(order);
 
         // Only the cart items that were actually checked out leave the cart;
@@ -389,5 +390,7 @@ public class OrderServiceImpl implements OrderService {
                 .status(order.getStatus())
                 .totalAmount(order.getTotalAmount())
                 .build();
+        
+        
     }
 }

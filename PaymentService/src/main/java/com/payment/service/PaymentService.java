@@ -91,7 +91,7 @@ public class PaymentService {
                     .orElseThrow();
 
             if (verified) {
-                payment.setStatus(PaymentStatus.SUCCESS);
+                payment.setStatus(payment.getStatus());
                 payment.setPaymentDate(LocalDateTime.now());
                 payment.setRazorpayPaymentId(request.getRazorpayPaymentId());
                 payment.setRazorpaySignature(request.getRazorpaySignature());
@@ -110,6 +110,7 @@ public class PaymentService {
         Payment payment = paymentRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new RuntimeException("Payment not found for order " + orderId));
 
+        System.out.println(payment.getStatus());
         PaymentStatusResponse response = new PaymentStatusResponse();
         response.setOrderId(payment.getOrderId());
         response.setStatus(payment.getStatus());
